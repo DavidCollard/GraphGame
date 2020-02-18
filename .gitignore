@@ -1,0 +1,4 @@
+# build requirement for bundling
+node_modules
+# build product
+/game.js

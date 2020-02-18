@@ -1,0 +1,14 @@
+{
+  "name": "jsgame",
+  "version": "1.0.0",
+  "description": "",
+  "main": "coordinateUtils.js",
+  "scripts": {
+    "bundle": "browserify ./src/game.js -o ./game.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "browserify": "^16.5.0"
+  }
+}
