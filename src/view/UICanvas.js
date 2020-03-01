@@ -10,46 +10,45 @@ class UICanvasView {
         this.uictx = this.uiCanvas.getContext("2d");
         this.uiElements = [];
         this.init();
-    }
+    };
 
     draw(forceUpdate = false) {
-        // console.log('drawing UI');
         this.controller.getModel();
         let ctx = this.uictx;
         let width = this.uiCanvas.width;
         let height = this.uiCanvas.height;
 
-        for (let id in this.uiElements) {
-            let element = this.uiElements[id];
+        ctx.clearRect(0, 0, width, height);
+        ctx.stroke();
+
+        for (let element of this.uiElements) {
             element.draw(ctx);
         }
 
-    }
+    };
 
     calculateCanvasDims() {
         const rect = this.uiCanvas.parentNode.getBoundingClientRect();
         this.uiCanvas.width = rect.width;
         this.uiCanvas.height = rect.height;
 
-        // this.uiCanvas.style.bottom = '0px';
-
         this.offsetX = this.uiCanvas.offsetLeft;
         this.offsetY = this.uiCanvas.offsetTop;
         this.canvasWidth = this.uiCanvas.width;
         this.canvasHeight = this.uiCanvas.height;
-    }
+    };
 
     handleResize(e) {
         this.calculateCanvasDims();
         this.initButtons();
         this.draw();
-    }
+    };
 
     isClicked(e) {
         const mouseX = parseInt(e.clientX - this.offsetX);
         const mouseY = parseInt(e.clientY - this.offsetY);
         return mouseX >= 0 && mouseX <= this.canvasWidth && mouseY >= 0 && mouseY <= this.canvasHeight;
-    }
+    };
 
     handleMouseDown(e) {
         const mouseX = parseInt(e.clientX - this.offsetX);
@@ -65,25 +64,25 @@ class UICanvasView {
         }
 
         return !clicked;
-    }
+    };
 
     onwheel(e) {
         return true;
-    }
+    };
 
     handleKeyDown(e) {
-        if (e.key === 'q') {
+        if (e.key === 'q' || e.key === 'Q') {
             this.controller.evtChangeClickAction(ClickAction.QUERY);
         }
-        else if (e.key === 'w') {
+        else if (e.key === 'w' || e.key === 'W') {
             this.controller.evtChangeClickAction(ClickAction.STRUCT);
         }
-        else if (e.key === 'e') {
+        else if (e.key === 'e' || e.key === 'E') {
             this.controller.evtChangeClickAction(ClickAction.DELETE);
         }
         this.draw();
         return true;
-    }
+    };
 
     initButtons() {
 
@@ -91,20 +90,12 @@ class UICanvasView {
 
         let canvas = this.uiCanvas;
         let controller = this.controller;
-        
+
         const buttonH = 50;
         const buttonW = 50;
         const defaultActive = '#90EE90';
         const defaultSelected = '#42b3f5';
 
-        /*
-        const menuGroup = new ButtonGroup(
-            (canvas.width - buttonW) / 2,
-            canvas.height - buttonH * 1.5,
-            ExtendDir.HORIZONTAL
-        );
-        */
-        
         const menuGroup = new ButtonGroup(
             canvas.width - buttonW * 1.5,
             (canvas.height - buttonH) / 2,
@@ -119,7 +110,7 @@ class UICanvasView {
             (e) => { },
             () => {
                 return {
-                    text: ["# of nodes", controller.getModel().nodes.length - controller.getModel().deadNodes.length],
+                    text: ["# of nodes", (controller.getModel().nodes.length - controller.getModel().deadNodes.length).toString()],
                     colour: defaultActive
                 }
             },
@@ -164,20 +155,6 @@ class UICanvasView {
             },
             true
         );
-        // currency
-        menuGroup.addButton(
-            buttonW,
-            buttonH,
-            (e) => { },
-            () => {
-                return {
-                    text: ["Currency", controller.getModel().currency],
-                    colour: defaultActive
-                }
-            },
-            true
-        );
-
         // query panel
         this.uiElements.push(
             new CanvasButton(
@@ -192,7 +169,9 @@ class UICanvasView {
                     if (model.isValidId(id)) {
                         this.visible = true;
                         const struct = model.getStructure(id);
-                        return { text: struct.getQueryDesc(), colour: defaultActive };
+                        const text = struct.getQueryDesc();
+                        this.height = text.length * 15 + 10;
+                        return { text: text, colour: defaultActive };
                     }
                     this.visible = false;
                     return { text: [], colour: defaultActive };
@@ -200,14 +179,35 @@ class UICanvasView {
                 false
             )
         );
+        const lineHeight = 15;
+        const messageLogHeight = 20 + 5 * lineHeight;
+        const messageLogWidth = 500;
+        // Message log
+        this.uiElements.push(
+            new CanvasButton(
+                this.canvasWidth - 10 - messageLogWidth,
+                10,
+                messageLogWidth,
+                messageLogHeight,
+                function (e) { this.height = this.height === messageLogHeight ? 20 : messageLogHeight; },
+                function () {
+                    let messages = controller.getModel().messages.slice(0);
+                    if (messages.length > (this.height - 20) / lineHeight) {
+                        messages = messages.slice(messages.length - (this.height - 20) / lineHeight, messages.length);
+                    }
+                    return { text: ['Message Log', ...messages.reverse()], colour: defaultActive };
+                },
+                true
+            )
+        );
     };
 
     init() {
         this.calculateCanvasDims();
-        
+
         let canvas = this.uiCanvas;
         let controller = this.controller;
-        
+
         let uiCanvas = this;
         controller.subscribe(() => { uiCanvas.draw() });
 
@@ -222,11 +222,8 @@ class UICanvasView {
         this.onkeydown = (e) => { return this.handleKeyDown(e) };
         canvas.oncontextmenu = () => { return false; }; // disable right click menu
 
-        // let reset = document.getElementById('reset');
-        // reset.onclick = (e) => { this.handleReset(e) };
-
         this.onresize = (e) => { this.handleResize(e) };
-    }
-}
+    };
+};
 
-module.exports = { UICanvasView }
+module.exports = { UICanvasView };

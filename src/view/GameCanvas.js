@@ -1,4 +1,4 @@
-const utils = require('../coordinateUtils');
+const utils = require('../Utils/coordinateUtils');
 
 class GameCanvasView {
     constructor(containerName, controller) {
@@ -46,8 +46,8 @@ class GameCanvasView {
     moveCamera(xCoord, yCoord, tilePxLen = this.tilePxLen, height = this.canvasHeight, width = this.canvasWidth) {
         const hmidOffset = width / 2;
         const vmidOffset = height / 2;
-        const xPx = xCoord * tilePxLen + hmidOffset;
-        const yPx = yCoord * tilePxLen + vmidOffset;
+        const xPx = -xCoord * tilePxLen + hmidOffset;
+        const yPx = -yCoord * tilePxLen + vmidOffset;
         this.globalX = xPx;
         this.globalY = yPx;
         this.drawBoard(true);
@@ -74,10 +74,10 @@ class GameCanvasView {
         const maxY = minY + (canvasHeight / tilePxLen) + 1;
 
         const model = this.controller.getModel();
-        
+
         let queryChildren = model.selectedChildren;
         let queryAncestors = model.selectedAncestors;
-    
+
         for (let src in model.conns) {
             for (let sink in model.conns[src]) {
 
@@ -130,7 +130,7 @@ class GameCanvasView {
 
                 let isAncestor = queryAncestors.includes(sinkStruct.id); // then both src and sink are ancestors 
                 let isChild = queryChildren.includes(srcStruct.id);      // then both src and sink are children
-                
+
                 if (isAncestor && isChild) {
                     ctx.strokeStyle = "green";
                 }
@@ -140,8 +140,7 @@ class GameCanvasView {
                 else if (isChild) {
                     ctx.strokeStyle = "yellow";
                 }
-                else // default
-                {
+                else {
                     ctx.strokeStyle = "grey";
                 }
 
@@ -203,7 +202,6 @@ class GameCanvasView {
 
         const coordX = Math.floor((-globalX - localX) / tilePxLen);
         const coordY = Math.floor((-globalY - localY) / tilePxLen);
-        // console.log(`draw: cx: ${coordX}, cy: ${coordY}`);
 
         // gridlines
         ctx.lineWidth = 1;
@@ -347,11 +345,14 @@ class GameCanvasView {
     }
 
     onwheel(e) {
+        // prior middle cell
+        const { coordX, coordY } = this.calcCoordinate(this.canvasWidth / 2, this.canvasHeight / 2);
         if (e.deltaY > 0) {
             this.tilePxLen = Math.max(this.tilePxLen - 5, 20);
         } else if (e.deltaY < 0) {
             this.tilePxLen = Math.min(this.tilePxLen + 5, 80);
         }
+        this.moveCamera(coordX, coordY);
     }
 
     handleKeyDown(e) {

@@ -85,7 +85,6 @@ function startup() {
     //TODO: non-chrome support
     window.onwheel = (e) => {
         let res = uiCanvasView.onwheel(e);
-        console.log('out')
         if (res) {
             gameCanvasView.onwheel(e);
         }

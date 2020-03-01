@@ -2,6 +2,7 @@
 const { StructureStatus, Structure } = require('./Structure');
 const CommandNode = require('./CommandNode').CommandNode;
 const Farm = require('./Farm').Farm;
+const StringUtils = require('../Utils/StringUtils');
 
 const ClickAction = {
     QUERY: 0,
@@ -25,7 +26,7 @@ class Model {
         this.selectedNode = null;
         this.selectedChildren = [];
         this.selectedAncestors = [];
-        this.currency = 0;
+        this.messages = ['This is Alpha version 0.2. Check out the github for details on how this works / what it is'];
 
         this.createStructure(0, 0, CommandNode);
     };
@@ -51,7 +52,7 @@ class Model {
 
     createStructure(x, y, StructType) {
         if (this.isStructureAt(x, y)) {
-            // console.log(`cannot create structure at ${this.getCoordinateKey(x, y)} because another structure is already there`);
+            return;
         }
         if (this.deadNodes.length === 0) {
             // allocate new space
@@ -69,11 +70,12 @@ class Model {
             let key = this.getCoordinateKey(x, y);
             this.coordStructureLookup[key] = id;
         }
+        this.getStructureAt(x, y).init(this);
     };
 
     deleteStructure(id) {
         const struct = this.getStructure(id);
-        struct.deactivate();
+        struct.updateStatus(this, StructureStatus.INACTIVE);
 
         for (let inId of struct.inConns) {
             const inStruct = this.getStructure(inId);
@@ -85,11 +87,11 @@ class Model {
         }
 
         delete this.coordStructureLookup[this.getStructKey(struct)];
-        
+
         if (this.selectedNode === id) {
             this.setSelectedNode(null);
         }
-        else { 
+        else {
             this.refreshSelectedNode();
         }
 
@@ -104,21 +106,31 @@ class Model {
         const isValid = fromStruct.withinRange(toStruct);
 
         if (!isValid) {
-            // console.log(`cannot create connection between ${this.getStructKey(fromStruct)} and ${this.getStructKey(toStruct)} - exceeds range of ${fromStruct.range}`);
+            this.addMessage(`cannot create connection between ${this.getStructKey(fromStruct)} and ${this.getStructKey(toStruct)} - exceeds range of ${fromStruct.range}`);
             return;
         }
 
         if (fromStruct.maxOutConns <= fromStruct.outConns.length) {
-            // console.log(`Cannot create connection as node ${this.getStructKey(fromStruct)} has reached it's maximum number of outbound connections`);
+            this.addMessage(`Cannot create connection as node ${this.getStructKey(fromStruct)} has reached it's maximum number of outbound connections`);
             return;
         }
 
         if (toStruct.maxInConns <= toStruct.inConns.length) {
-            // console.log(`Cannot create connection as node ${this.getStructKey(fromStruct)} has reached it's maximum number of inbound connections`);
+            this.addMessage(`Cannot create connection as node ${this.getStructKey(toStruct)} has reached it's maximum number of inbound connections`);
             return;
         }
 
-        // console.log(`created connection between ${this.getStructKey(fromStruct)} and ${this.getStructKey(toStruct)}`);
+        if (fromStruct.outConns.includes(toStruct.id)) {
+            this.addMessage(`Cannot create connection between ${this.getStructKey(fromStruct)} and ${this.getStructKey(toStruct)} as the same connection already exists`);
+            return;
+        }
+
+        if (toStruct.outConns.includes(fromStruct.id)) {
+            this.addMessage(`Cannot create connection between ${this.getStructKey(fromStruct)} and ${this.getStructKey(toStruct)} as an inverse connection already exists`);
+            return;
+        }
+
+        this.addMessage(`created connection between ${this.getStructKey(fromStruct)} and ${this.getStructKey(toStruct)}`);
 
         // model list
         fromStruct.outConns.push(toStruct.id);
@@ -138,7 +150,7 @@ class Model {
     rebuildConns() {
         let conns = [];
         for (const struct of this.nodes) {
-            if (struct.status !== StructureStatus.ACTIVE || !struct.outConns) {
+            if (struct.status === StructureStatus.INACTIVE || !struct.outConns) {
                 continue;
             }
             conns[struct.id] = struct.outConns.slice(); // copy
@@ -151,7 +163,7 @@ class Model {
     };
 
     isValidId(id) {
-        return id !== null && id !== undefined && id >= 0 && id < this.nodes.length && this.nodes[id].status === StructureStatus.ACTIVE;
+        return id !== null && id !== undefined && id >= 0 && id < this.nodes.length && this.nodes[id].status !== StructureStatus.INACTIVE;
     };
 
     calcBgColour(x, y) {
@@ -166,9 +178,8 @@ class Model {
         const r2 = 144, g2 = 238, b2 = 144;//'#90EE90' -- green
 
         let factor = 0;
-        for (let id in this.nodes) {
-            const struct = this.nodes[id];
-            if (struct.status === StructureStatus.ACTIVE && struct.pointInRange(x, y)) {
+        for (let struct of this.nodes) {
+            if (struct.status === StructureStatus.ACTIVE && struct.pointInRange(x, y) && struct instanceof Farm) {
                 const dist = struct.distanceToPoint(x, y);
                 factor = Math.min(1, factor + (struct.range - dist) / struct.range);
             }
@@ -257,6 +268,11 @@ class Model {
         }
         return relatives;
     };
+
+    addMessage(message) {
+        let date = new Date(Date.now());
+        this.messages.push('[' + date.toLocaleTimeString() + '] ' + message);
+    }
 
 };
 
